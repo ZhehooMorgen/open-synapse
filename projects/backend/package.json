@@ -2,9 +2,13 @@
     "name": "open-synapse-backend",
     "description": "The backend of Open Synapse",
     "dependencies": {
+        "@prisma/adapter-pg": "^7.4.0",
+        "@prisma/client": "^7.4.0",
         "@restatedev/restate-sdk": "^1.10.2",
         "@restatedev/restate-sdk-clients": "^1.10.2",
+        "dotenv": "^17.3.1",
         "elysia": "^1.4.25",
+        "prisma": "^7.4.0",
         "zod": "^4.3.6"
     }
 }

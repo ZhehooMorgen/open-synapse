@@ -2,6 +2,8 @@ import * as restate from "@restatedev/restate-sdk/fetch";
 import * as restateClient from "@restatedev/restate-sdk-clients";
 import { Elysia, t } from "elysia";
 import { z } from "zod";
+import configReader from './ConfigReader'
+import { prisma } from "./prisma";
 
 console.log("Starting Open Synapse Backend...");
 
@@ -28,16 +30,16 @@ const greeter = restate.service({
   },
 });
 
-const workerPort = Number(process.env.restateWorkerPort);
+
 const handler = restate.createEndpointHandler({
   services: [greeter],
 });
 Bun.serve({
-  port: workerPort,
+  port: configReader.getConfig().restateWorkerPort,
   fetch: handler,
 });
 
-const restatePort = Number(process.env.restatePort);
+const restatePort = configReader.getConfig().restatePort;
 const rs = restateClient.connect({ url: `http://localhost:${restatePort}` });
 const greeterClient = rs.serviceClient(greeter);
 
@@ -52,8 +54,12 @@ app.post("/greet", async (ctx) => {
     throw e;
   }
 });
+app.get("/testDb", async (ctx) => {
+  const userCount = await prisma.user.count();
+  return { userCount };
+});
 
-const port = Number(process.env.PORT) || 3000;
+const port = configReader.getConfig().port;
 app.listen(port);
 
 console.log(`Open Synapse Backend is running on port ${port}`);

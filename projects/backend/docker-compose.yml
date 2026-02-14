@@ -11,6 +11,18 @@ services:
       - restate_data:/restate-data
     environment:
       - RESTATE_NODE_NAME=Open Synapse Restate Hub (development)
+  postgres:
+    container_name: postgres
+    image: postgres:latest
+    ports:
+      - "${pgsqlPort}:5432"
+    environment:
+      - POSTGRES_USER=${pgsqlUser}
+      - POSTGRES_PASSWORD=${pgsqlPassword}
+      - POSTGRES_DB=${pgsqlDatabase}
+    volumes:
+      - pg_data:/var/lib/postgresql
 
 volumes:
   restate_data:
+  pg_data:
