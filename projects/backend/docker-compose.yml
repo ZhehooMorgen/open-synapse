@@ -1,0 +1,16 @@
+name: open-synapse-backend-env
+
+services:
+  restate:
+    container_name: restate-hub
+    image: restatedev/restate:latest
+    ports:
+      - "${restatePort}:8080"
+      - "${restateAdminPort}:9070"
+    volumes:
+      - restate_data:/restate-data
+    environment:
+      - RESTATE_NODE_NAME=Open Synapse Restate Hub (development)
+
+volumes:
+  restate_data:

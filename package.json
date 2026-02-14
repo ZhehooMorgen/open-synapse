@@ -1,8 +1,9 @@
 {
   "name": "open-synapse",
-  "module": "index.ts",
-  "type": "module",
   "private": true,
+  "workspaces":[
+    "projects/*"
+  ],
   "devDependencies": {
     "@types/bun": "latest"
   },
