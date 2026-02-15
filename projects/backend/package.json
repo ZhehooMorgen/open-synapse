@@ -12,6 +12,7 @@
     "zod": "^4.3.6"
   },
   "scripts": {
+    "dev": "bun run main.ts",
     "db:sync": "prisma db push && prisma generate"
   }
 }

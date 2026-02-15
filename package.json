@@ -1,7 +1,7 @@
 {
   "name": "open-synapse",
   "private": true,
-  "workspaces":[
+  "workspaces": [
     "projects/*"
   ],
   "devDependencies": {
@@ -9,5 +9,8 @@
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "scripts": {
+    "dev": "bun run --filter '*' dev"
   }
 }
