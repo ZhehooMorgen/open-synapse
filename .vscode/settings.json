@@ -1,7 +1,15 @@
 {
-    "cSpell.words": [
-        "elysia",
-        "pgsql",
-        "restatedev"
-    ]
+  "cSpell.words": [
+    "elysia",
+    "fontsource",
+    "oklch",
+    "pgsql",
+    "restatedev",
+    "shadcn"
+  ],
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  }
 }
