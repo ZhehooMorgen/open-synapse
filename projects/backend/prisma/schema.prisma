@@ -14,9 +14,10 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
   email     String   @unique
   name      String?
+  age       Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

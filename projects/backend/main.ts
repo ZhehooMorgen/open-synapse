@@ -1,8 +1,8 @@
-import * as restate from "@restatedev/restate-sdk/fetch";
 import * as restateClient from "@restatedev/restate-sdk-clients";
-import { Elysia, t } from "elysia";
+import * as restate from "@restatedev/restate-sdk/fetch";
+import { Elysia } from "elysia";
 import { z } from "zod";
-import configReader from './ConfigReader'
+import configReader from "./ConfigReader";
 import { prisma } from "./prisma";
 
 console.log("Starting Open Synapse Backend...");
@@ -29,7 +29,6 @@ const greeter = restate.service({
     ),
   },
 });
-
 
 const handler = restate.createEndpointHandler({
   services: [greeter],

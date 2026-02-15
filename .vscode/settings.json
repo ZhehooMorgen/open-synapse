@@ -1,15 +1,20 @@
 {
   "cSpell.words": [
+    "dbgenerated",
     "elysia",
     "fontsource",
     "oklch",
     "pgsql",
     "restatedev",
-    "shadcn"
+    "shadcn",
+    "uuidv"
   ],
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
     "source.organizeImports": "explicit"
+  },
+  "[prisma]": {
+    "editor.defaultFormatter": "Prisma.prisma"
   }
 }
