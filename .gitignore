@@ -1,9 +1,6 @@
 # disable bun lockfile
 bun.lock
 
-# generated files
-projects/backend/prisma/client
-
 # dependencies (bun install)
 node_modules
 
