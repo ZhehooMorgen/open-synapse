@@ -11,6 +11,13 @@ services:
       - restate_data:/restate-data
     environment:
       - RESTATE_NODE_NAME=Open Synapse Restate Hub (development)
+
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - "${redisPort}:6379"
+
   postgres:
     container_name: postgres
     image: postgres:latest
