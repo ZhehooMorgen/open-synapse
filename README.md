@@ -122,6 +122,10 @@ So that user can start a context on the workstation and require that agent to re
 
 Currently the extension is just like a MCP server, which can only provide some APIs for the agent to call. But in the future, we may want to allow the extension to also provide some UI for the agent to use, so that the extension can have a better interaction with the user.
 
+### Heuristic State-Space NP Solver
+
+Basically, generative AI tools are just a heuristic state-space NP solver. But currently the existing AI tools are not very good at the searching part. We can use some techniques to improve the searching part. This can then be used as the core engine of this tool to make it more powerful and efficient.
+
 ### Skills
 
 Users can define skills, just like other AI agent tools.
