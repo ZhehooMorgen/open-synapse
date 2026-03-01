@@ -1,5 +1,7 @@
 # 人工智能应当是一个基于启发式搜索的NP问题求解器
 
+本文最新版本发布在 https://github.com/ZhehooMorgen/open-synapse/blob/main/projects/NPSolver/Theory.en.md
+
 在[Readme](../../README.md)中，我们已经指出，当前AI技术落地的两大问题是：
 
 1. 缸中之脑问题

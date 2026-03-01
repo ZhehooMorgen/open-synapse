@@ -2,6 +2,8 @@
 
 原文以中文撰写，英文翻译由AI完成。可以在[这里](./Theory.md.md)查看原文。
 
+This latest version is available at https://github.com/ZhehooMorgen/open-synapse/blob/main/projects/NPSolver/Theory.en.md
+
 In the [Readme](../../README.md), we have already pointed out two major problems with current AI technology deployment:
 
 1. The Brain-in-a-Vat Problem
