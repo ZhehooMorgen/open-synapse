@@ -4,8 +4,8 @@ Open Synapse is a open-source agent tool that help you do whatever you want.
 
 Currently the 2 major gaps that prevents the existing agent tools from being a useful tool to be used in real life are:
 
-1. The brain in the tank. The agent is running in a isolated environment, and it does not have access to the real world.
-2. The ability of the model is just not good enough. AI models will have illusions, and cannot do complex reasoning and plannings, the context window is narrow and cannot remember long term memory, and so on.
+1. The brain in a Vat. The agent is running in a isolated environment, and it does not have access to the real world.
+2. The limitation of model itself. AI models will have illusions, and cannot do complex reasoning and plannings, the context window is narrow and cannot remember long term memory, and so on.
 
 This project is mainly trying to solve the first problem by adding extensions to allow it to access to real world.
 
@@ -135,7 +135,7 @@ Currently the extension is just like a MCP server, which can only provide some A
 
 Basically, generative AI tools are just a heuristic state-space NP solver. But currently the existing AI tools are not very good at the searching part. We can use some techniques to improve the searching part. This can then be used as the core engine of this tool to make it more powerful and efficient.
 
-The theory is talked about in [theory.md](./projects/NPSolver/Theory.md).
+The theory is talked about in [theory.md](./projects/NPSolver/Theory.en.md).
 
 ### Skills
 
