@@ -1,6 +1,6 @@
 # Artificial Intelligence Should Be a Heuristic State-Space NP Problem Solver
 
-原文以中文撰写，英文翻译由AI完成。可以在[这里](./Theory.md)查看原文。
+原文以中文撰写，英文翻译由AI完成。可以在[这里](./theory.md)查看原文。
 
 This latest version is available at https://github.com/ZhehooMorgen/open-synapse/blob/main/projects/NPSolver/Theory.en.md
 

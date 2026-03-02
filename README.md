@@ -135,7 +135,7 @@ Currently the extension is just like a MCP server, which can only provide some A
 
 Basically, generative AI tools are just a heuristic state-space NP solver. But currently the existing AI tools are not very good at the searching part. We can use some techniques to improve the searching part. This can then be used as the core engine of this tool to make it more powerful and efficient.
 
-The theory is talked about in [theory.md](./projects/NPSolver/Theory.en.md).
+The theory is talked about in [theory.md](./projects/npSolver/theory.en.md).
 
 ### Skills
 
