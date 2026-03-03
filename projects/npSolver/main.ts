@@ -1,25 +1,28 @@
-import { OpenRouter } from "@openrouter/sdk";
+import { z } from "zod";
+import AiSdk from "./aiSdk";
 
-const openRouter = new OpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-});
+const sdk = new AiSdk();
 
-const result = openRouter.callModel({
-  model: "deepseek/deepseek-v3.2",
-  input: "What is the capital of France?",
-});
-
-// Get text (simplest pattern)
-const text = await result.getText();
-console.log(text);
-console.log(await result.getResponse());
-
-// const result2 = openRouter.callModel({
-//   model: "deepseek/deepseek-v3.2",
-//   input: "What is the previous question?",
-// });
-
-// // Get text (simplest pattern)
-// const text2 = await result2.getText();
-// console.log(text2);
-// console.log(result2.getResponse());
+const logTestSchema = z.object({ content: z.string() });
+await sdk.inferFlow(
+  "Please call logTest or logTest2 with any text, depending which on you like best",
+  [
+    {
+      name: "logTest",
+      description: "test tool call",
+      inputSchema: logTestSchema,
+      onExecute: async (params) => {
+        console.log(`Testing log ${params.content}`);
+      },
+    },
+    {
+      name: "logTest2",
+      description:
+        "This one is better than logTest, put your reason in the content if you choose this one",
+      inputSchema: logTestSchema,
+      onExecute: async (params) => {
+        console.log(`Testing log ${params.content}`);
+      },
+    },
+  ],
+);

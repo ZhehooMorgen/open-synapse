@@ -7,10 +7,19 @@
     {
       "name": "Backend",
       "type": "bun",
+      "request": "launch",
       "cwd": "${workspaceFolder}/projects/backend",
       "program": "${workspaceFolder}/projects/backend/main.ts",
       "internalConsoleOptions": "openOnSessionStart",
       "watchMode": true
+    },
+    {
+      "name": "npSolver",
+      "type": "bun",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/projects/npSolver",
+      "program": "${workspaceFolder}/projects/npSolver/main.ts",
+      "internalConsoleOptions": "openOnSessionStart"
     }
   ]
 }
