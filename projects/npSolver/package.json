@@ -1,4 +1,6 @@
 {
   "name": "np-solver",
-  "dependencies": {}
+  "dependencies": {
+    "@openrouter/sdk": "^0.9.11"
+  }
 }

@@ -3,63 +3,25 @@ interface FinalAnswer {
   steps: string[];
 }
 
-interface SearchNode {
+interface ReasonNode {
   context: string;
   knowledge: string[];
-  subNodes: SearchNode[];
+  subNodes: ReasonNode[];
+  conclusion: string;
 }
 
 export class NPSolver {
-  constructor(
-    private reasoner: Reasoner,
-    private evaluator: Evaluator,
-  ) {}
-
-  solve(question: string): FinalAnswer {
-    this.reasoner.resonate(question);
-    throw new Error("Not implemented yet");
-  }
-}
-
-enum ReasonResultType {
-  heuristic,
-  search,
-  refinment,
-  conclusion,
-}
-
-type ReasonResult =
-  | {
-      type: ReasonResultType.heuristic;
-      directions: string[];
-    }
-  | {
-      type: ReasonResultType.search;
-      candidate: string;
-    }
-  | {
-      type: ReasonResultType.refinment;
-      refindedResult: string;
-    }
-  | {
-      type: ReasonResultType.conclusion;
-      conclusion: string;
-    };
-
-export class Reasoner {
   constructor() {}
 
-  resonate(context: string): ReasonResult {
+  async solve(question: string): Promise<FinalAnswer> {
     throw new Error("Not implemented yet");
   }
-}
 
-interface EvaluationResult {}
+  async reason(node: ReasonNode): Promise<void> {
+    throw new Error("Not implemented yet");
+  }
 
-export class Evaluator {
-  constructor() {}
-
-  evaluate(context: string): EvaluationResult {
+  async evaluate(node: ReasonNode): Promise<void> {
     throw new Error("Not implemented yet");
   }
 }
