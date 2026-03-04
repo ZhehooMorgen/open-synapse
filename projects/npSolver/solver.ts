@@ -17,6 +17,17 @@ const DEFAULT_MAX_DEPTH = 3;
 
 const indent = (depth: number) => "  ".repeat(depth);
 
+function buildAncestorContext(node: ReasonNode): string {
+  const chain: string[] = [];
+  let current: ReasonNode | undefined = node.parent;
+  while (current) {
+    chain.unshift(current.context);
+    current = current.parent;
+  }
+  if (chain.length === 0) return "";
+  return `\n\n# 问题链\n## 原始问题\n${chain[0]}${chain.slice(1).map((c, i) => `\n\n## 第${i + 1}层探索方向\n${c}`).join("")}`;
+}
+
 export class NPSolver {
   constructor(
     private sdk: IAiSdk,
@@ -59,7 +70,8 @@ export class NPSolver {
         ? "\n\n# 深度限制\n你已经到达搜索深度的上限，你必须直接给出答案(answer)或承认此路不通(reject)，不可以再提出新的启发式方向。"
         : `\n\n# 当前搜索深度: ${depth}/${this.maxDepth}`;
 
-    const prompt = `${systemPrompt}${depthInfo}\n\n# 问题\n${node.context}`;
+    const ancestorContext = buildAncestorContext(node);
+    const prompt = `${systemPrompt}${depthInfo}${ancestorContext}\n\n# 当前问题\n${node.context}`;
 
     return new Promise<ReasonNode>((resolve, reject) => {
       const actions: NextAction<any>[] = [];
@@ -147,7 +159,8 @@ export class NPSolver {
 
   private async evaluate(node: ReasonNode): Promise<ReasonNode> {
     console.log(`[evaluate] 评估节点: ${node.context.slice(0, 60)}`);
-    const prompt = `${prompts.theoryPrompt}\n${prompts.evaluationPrompt}\n\n# 待评估的候选解\n## 问题上下文\n${node.context}\n\n## 候选解\n${node.conclusion}`;
+    const ancestorContext = buildAncestorContext(node);
+    const prompt = `${prompts.theoryPrompt}\n${prompts.evaluationPrompt}${ancestorContext}\n\n# 待评估的候选解\n## 问题上下文\n${node.context}\n\n## 候选解\n${node.conclusion}`;
 
     return new Promise<ReasonNode>((resolve, reject) => {
       const actions: NextAction<any>[] = [
@@ -205,20 +218,21 @@ export class NPSolver {
           name: "select",
           description: "选择一个最优的方向作为最终结果",
           inputSchema: z.object({
-            selectedIndex: z.number().describe("选中的方向编号（从0开始）"),
+            selectedIndex: z.number().describe("选中的方向编号（从1开始，对应方向1、方向2...）"),
             reason: z.string().describe("选择此方向的原因"),
           }),
           onExecute: async (params: {
             selectedIndex: number;
             reason: string;
           }) => {
+            const idx = params.selectedIndex - 1;
             console.log(
-              `${pad}[aggregate d=${depth}] → select: 方向${params.selectedIndex} - ${params.reason.slice(0, 60)}`,
+              `${pad}[aggregate d=${depth}] → select: 方向${params.selectedIndex} (idx=${idx}) - ${params.reason.slice(0, 60)}`,
             );
-            const selected = childResults[params.selectedIndex];
+            const selected = childResults[idx];
             if (!selected) {
               reject(
-                new Error(`Invalid selection index: ${params.selectedIndex}`),
+                new Error(`Invalid selection index: ${params.selectedIndex} (resolved to ${idx}, total: ${childResults.length})`),
               );
               return;
             }
