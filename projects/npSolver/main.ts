@@ -1,7 +1,7 @@
 import { z } from "zod";
-import AiSdk from "./aiSdk";
+import { type IAiSdk, OpenRouterSdk } from "./AiSdk";
 
-const sdk = new AiSdk();
+const sdk: IAiSdk = new OpenRouterSdk();
 
 const logTestSchema = z.object({ content: z.string() });
 await sdk.inferFlow(

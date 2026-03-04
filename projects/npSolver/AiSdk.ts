@@ -11,8 +11,16 @@ export interface NextAction<T extends $ZodObject<$ZodShape>> {
   onExecute: (params: zodInfer<T>) => Promise<void>;
 }
 
-export default class AiSdk {
+export interface IAiSdk {
+  inferFlow(
+    input: string,
+    nextActions: NextAction<$ZodObject<$ZodShape>>[],
+  ): Promise<void>;
+}
+
+export class OpenRouterSdk implements IAiSdk {
   private readonly client = new OpenRouter({ apiKey });
+
   async inferFlow(
     input: string,
     nextActions: NextAction<$ZodObject<$ZodShape>>[],
