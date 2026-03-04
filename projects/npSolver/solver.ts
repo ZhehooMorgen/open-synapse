@@ -15,6 +15,8 @@ interface ReasonNode {
 
 const DEFAULT_MAX_DEPTH = 3;
 
+const indent = (depth: number) => "  ".repeat(depth);
+
 export class NPSolver {
   constructor(
     private sdk: IAiSdk,
@@ -22,6 +24,7 @@ export class NPSolver {
   ) {}
 
   async solve(question: string): Promise<FinalAnswer> {
+    console.log(`[solve] 开始求解: ${question}`);
     const rootNode: ReasonNode = {
       context: question,
       conclusion: "",
@@ -29,6 +32,7 @@ export class NPSolver {
     };
 
     const resultNode = await this.reason(rootNode, 0, true);
+    console.log(`[solve] 求解完成`);
 
     return {
       answer: resultNode.conclusion,
@@ -41,6 +45,11 @@ export class NPSolver {
     depth: number,
     isRoot: boolean,
   ): Promise<ReasonNode> {
+    const pad = indent(depth);
+    console.log(
+      `${pad}[reason d=${depth}] ${isRoot ? "(root) " : ""}开始推理: ${node.context.slice(0, 80)}...`,
+    );
+
     const systemPrompt = isRoot
       ? `${prompts.theoryPrompt}\n${prompts.rootReasoningPrompt}`
       : `${prompts.theoryPrompt}\n${prompts.reasoningPrompt}`;
@@ -59,14 +68,19 @@ export class NPSolver {
       if (depth < this.maxDepth) {
         actions.push({
           name: "heuristic",
-          description:
-            "提出多个启发式方向，将问题分解为多个独立的探索分支",
+          description: "提出多个启发式方向，将问题分解为多个独立的探索分支",
           inputSchema: z.object({
             directions: z
               .array(z.string())
               .describe("多个独立的启发式方向，每个方向是一个具体的探索思路"),
           }),
           onExecute: async (params: { directions: string[] }) => {
+            console.log(
+              `${pad}[reason d=${depth}] → heuristic: ${params.directions.length} 个方向`,
+            );
+            params.directions.forEach((d, i) =>
+              console.log(`${pad}  方向${i}: ${d.slice(0, 60)}`),
+            );
             if (params.directions.length === 0) {
               reject(new Error("No heuristic directions provided"));
               return;
@@ -82,11 +96,7 @@ export class NPSolver {
               childNodes.map((child) => this.reason(child, depth + 1, false)),
             );
 
-            const decided = await this.aggregateAndDecide(
-              node,
-              results,
-              depth,
-            );
+            const decided = await this.aggregateAndDecide(node, results, depth);
             resolve(decided);
           },
         });
@@ -102,6 +112,9 @@ export class NPSolver {
           reasoning: z.string().describe("你的推理路径和依据"),
         }),
         onExecute: async (params: { answer: string; reasoning: string }) => {
+          console.log(
+            `${pad}[reason d=${depth}] → answer: ${params.answer.slice(0, 80)}`,
+          );
           node.conclusion = `${params.answer}\n\n[推理依据] ${params.reasoning}`;
           const evaluated = await this.evaluate(node);
           resolve(evaluated);
@@ -120,6 +133,9 @@ export class NPSolver {
             .describe("从这个方向中获取的有价值的知识，供其他方向参考"),
         }),
         onExecute: async (params: { reason: string; knowledge: string[] }) => {
+          console.log(
+            `${pad}[reason d=${depth}] → reject: ${params.reason.slice(0, 80)}`,
+          );
           node.conclusion = `[此路不通] ${params.reason}\n[已获知识] ${params.knowledge.join("; ")}`;
           resolve(node);
         },
@@ -130,6 +146,7 @@ export class NPSolver {
   }
 
   private async evaluate(node: ReasonNode): Promise<ReasonNode> {
+    console.log(`[evaluate] 评估节点: ${node.context.slice(0, 60)}`);
     const prompt = `${prompts.theoryPrompt}\n${prompts.evaluationPrompt}\n\n# 待评估的候选解\n## 问题上下文\n${node.context}\n\n## 候选解\n${node.conclusion}`;
 
     return new Promise<ReasonNode>((resolve, reject) => {
@@ -141,6 +158,7 @@ export class NPSolver {
             comment: z.string().describe("评估意见"),
           }),
           onExecute: async (params: { comment: string }) => {
+            console.log(`[evaluate] → accept: ${params.comment.slice(0, 80)}`);
             node.conclusion = `${node.conclusion}\n[评估通过] ${params.comment}`;
             resolve(node);
           },
@@ -152,6 +170,7 @@ export class NPSolver {
             reason: z.string().describe("拒绝原因"),
           }),
           onExecute: async (params: { reason: string }) => {
+            console.log(`[evaluate] → reject: ${params.reason.slice(0, 80)}`);
             node.conclusion = `${node.conclusion}\n[评估拒绝] ${params.reason}`;
             resolve(node);
           },
@@ -167,6 +186,10 @@ export class NPSolver {
     childResults: ReasonNode[],
     depth: number,
   ): Promise<ReasonNode> {
+    const pad = indent(depth);
+    console.log(
+      `${pad}[aggregate d=${depth}] 聚合 ${childResults.length} 个方向的结果`,
+    );
     const childSummaries = childResults
       .map(
         (child, i) =>
@@ -182,21 +205,20 @@ export class NPSolver {
           name: "select",
           description: "选择一个最优的方向作为最终结果",
           inputSchema: z.object({
-            selectedIndex: z
-              .number()
-              .describe("选中的方向编号（从0开始）"),
+            selectedIndex: z.number().describe("选中的方向编号（从0开始）"),
             reason: z.string().describe("选择此方向的原因"),
           }),
           onExecute: async (params: {
             selectedIndex: number;
             reason: string;
           }) => {
+            console.log(
+              `${pad}[aggregate d=${depth}] → select: 方向${params.selectedIndex} - ${params.reason.slice(0, 60)}`,
+            );
             const selected = childResults[params.selectedIndex];
             if (!selected) {
               reject(
-                new Error(
-                  `Invalid selection index: ${params.selectedIndex}`,
-                ),
+                new Error(`Invalid selection index: ${params.selectedIndex}`),
               );
               return;
             }
@@ -214,29 +236,28 @@ export class NPSolver {
               .describe("整合后的新上下文，将作为新一轮推理的输入"),
           }),
           onExecute: async (params: { synthesis: string }) => {
+            console.log(
+              `${pad}[aggregate d=${depth}] → synthesize: ${params.synthesis.slice(0, 60)}`,
+            );
             const synthesizedNode: ReasonNode = {
               context: params.synthesis,
               conclusion: "",
               parent: parentNode,
             };
-            const result = await this.reason(
-              synthesizedNode,
-              depth + 1,
-              false,
-            );
+            const result = await this.reason(synthesizedNode, depth + 1, false);
             resolve(result);
           },
         },
         {
           name: "fail",
-          description:
-            "所有方向都不可行，整合已有知识生成总结返回给上级",
+          description: "所有方向都不可行，整合已有知识生成总结返回给上级",
           inputSchema: z.object({
-            summary: z
-              .string()
-              .describe("对所有方向的知识整合和失败总结"),
+            summary: z.string().describe("对所有方向的知识整合和失败总结"),
           }),
           onExecute: async (params: { summary: string }) => {
+            console.log(
+              `${pad}[aggregate d=${depth}] → fail: ${params.summary.slice(0, 60)}`,
+            );
             const failNode: ReasonNode = {
               context: parentNode.context,
               conclusion: `[所有方向不可行] ${params.summary}`,
