@@ -8,7 +8,6 @@ interface FinalAnswer {
 
 interface ReasonNode {
   context: string;
-  knowledge: string[];
   parent: ReasonNode | undefined;
   conclusion: string;
 }
@@ -19,7 +18,7 @@ export class NPSolver {
   async solve(question: string): Promise<FinalAnswer> {
     const rootNode: ReasonNode = {
       context: question,
-      knowledge: [],
+
       conclusion: "",
       parent: undefined,
     };
@@ -50,7 +49,7 @@ export class NPSolver {
             for (const direction of params.directions) {
               const childNode: ReasonNode = {
                 context: direction,
-                knowledge: [],
+
                 conclusion: "",
                 parent: node,
               };
