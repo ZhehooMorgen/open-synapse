@@ -25,7 +25,7 @@ export class OpenRouterSdk implements IAiSdk {
     input: string,
     nextActions: NextAction<$ZodObject<$ZodShape>>[],
   ): Promise<void> {
-    const sdkTools = nextActions.map((t) =>
+    const tools = nextActions.map((t) =>
       tool({
         name: t.name,
         description: t.description,
@@ -37,7 +37,7 @@ export class OpenRouterSdk implements IAiSdk {
     const result = this.client.callModel({
       model,
       input,
-      tools: sdkTools,
+      tools,
     });
 
     const toolCalls = await result.getToolCalls();

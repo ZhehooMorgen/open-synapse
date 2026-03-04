@@ -1,4 +1,5 @@
-import type { IAiSdk } from "./AiSdk";
+import z from "zod";
+import type { IAiSdk, NextAction } from "./AiSdk";
 
 interface FinalAnswer {
   answer: string;
@@ -31,8 +32,53 @@ export class NPSolver {
     };
   }
 
-  async reason(node: ReasonNode): Promise<ReasonNode> {
-    throw new Error("Not implemented yet");
+  reason(node: ReasonNode): Promise<ReasonNode> {
+    const promise = new Promise<ReasonNode>((resolve, reject) => {
+      const actions: NextAction<any>[] = [
+        {
+          name: "heuristic",
+          description: "Use this to provide a list of Heuristic Directions",
+          inputSchema: z.object({
+            directions: z.array(z.string()),
+          }),
+          onExecute: async (params) => {
+            // For each direction, create a new ReasonNode and call reason recursively
+            const pendingActions: Promise<ReasonNode>[] = [];
+            if (params.directions.length === 0) {
+              reject(new Error("No heuristic directions provided"));
+            }
+            for (const direction of params.directions) {
+              const childNode: ReasonNode = {
+                context: direction,
+                knowledge: [],
+                conclusion: "",
+                parent: node,
+              };
+              pendingActions.push(this.reason(childNode));
+            }
+            const results = await Promise.all(pendingActions);
+
+            const aggregatedResult = await this.evaluate(node);
+            resolve(aggregatedResult);
+          },
+        },
+        {
+          name: "answer",
+          description: "Use this when you have a final answer to provide",
+          inputSchema: z.object({
+            answer: z.string(),
+            knowledge: z.array(z.string()),
+          }),
+          onExecute: async (params) => {
+            node.conclusion = params.answer;
+          },
+        },
+      ];
+
+      await this.sdk.inferFlow(node.context, actions);
+    });
+
+    return promise;
   }
 
   async evaluate(node: ReasonNode): Promise<void> {
