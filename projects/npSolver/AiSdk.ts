@@ -3,7 +3,8 @@ import z from "zod";
 import type { $ZodObject, $ZodShape, output as zodInfer } from "zod/v4/core";
 
 const apiKey = process.env.OPENROUTER_API_KEY;
-const model = "deepseek/deepseek-v3.2";
+// const model = "deepseek/deepseek-v3.2";
+const model = "google/gemini-3-flash-preview";
 const MAX_RETRIES = 3;
 
 export interface NextAction<T extends $ZodObject<$ZodShape>> {
@@ -18,6 +19,8 @@ export interface IAiSdk {
     input: string,
     nextActions: NextAction<$ZodObject<$ZodShape>>[],
   ): Promise<void>;
+
+  directInfer(input: string): Promise<string>;
 }
 
 export class OpenRouterSdk implements IAiSdk {
@@ -47,13 +50,16 @@ export class OpenRouterSdk implements IAiSdk {
       try {
         toolCalls = await result.getToolCalls();
       } catch (e) {
-        console.log(`[AiSdk] attempt ${attempt}/${MAX_RETRIES} getToolCalls failed: ${e}`);
+        console.log(
+          `[AiSdk] attempt ${attempt}/${MAX_RETRIES} getToolCalls failed: ${e}`,
+        );
         if (attempt === MAX_RETRIES) throw e;
         continue;
       }
 
       if (toolCalls.length !== 1) {
-        const msg = "Expected exactly one tool call, but got " + toolCalls.length;
+        const msg =
+          "Expected exactly one tool call, but got " + toolCalls.length;
         console.log(`[AiSdk] attempt ${attempt}/${MAX_RETRIES} ${msg}`);
         if (attempt === MAX_RETRIES) throw new Error(msg);
         continue;
@@ -68,20 +74,41 @@ export class OpenRouterSdk implements IAiSdk {
       }
 
       if (toolCall.arguments === undefined || toolCall.arguments === null) {
-        console.log(`[AiSdk] attempt ${attempt}/${MAX_RETRIES} tool call arguments is null/undefined`);
-        if (attempt === MAX_RETRIES) throw new Error("Tool call arguments parsing failed after all retries");
+        console.log(
+          `[AiSdk] attempt ${attempt}/${MAX_RETRIES} tool call arguments is null/undefined`,
+        );
+        if (attempt === MAX_RETRIES)
+          throw new Error(
+            "Tool call arguments parsing failed after all retries",
+          );
         continue;
       }
 
-      const parseResult = z.safeParse(matchingAction.inputSchema, toolCall.arguments);
+      const parseResult = z.safeParse(
+        matchingAction.inputSchema,
+        toolCall.arguments,
+      );
       if (!parseResult.success) {
-        console.log(`[AiSdk] attempt ${attempt}/${MAX_RETRIES} schema validation failed: ${parseResult.error}`);
-        if (attempt === MAX_RETRIES) throw new Error(`Schema validation failed after all retries: ${parseResult.error}`);
+        console.log(
+          `[AiSdk] attempt ${attempt}/${MAX_RETRIES} schema validation failed: ${parseResult.error}`,
+        );
+        if (attempt === MAX_RETRIES)
+          throw new Error(
+            `Schema validation failed after all retries: ${parseResult.error}`,
+          );
         continue;
       }
 
       await matchingAction.onExecute(parseResult.data);
       return;
     }
+  }
+
+  async directInfer(input: string): Promise<string> {
+    const result = await this.client.callModel({
+      model,
+      input,
+    });
+    return await result.getText();
   }
 }

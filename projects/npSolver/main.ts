@@ -12,3 +12,5 @@ const answer = await solver.solve(question);
 
 console.log(`Answer: ${answer.answer}`);
 console.log(`Steps: ${answer.steps.join("\n---\n")}`);
+
+console.log(`Direct inference: ${await sdk.directInfer(question)}`);
