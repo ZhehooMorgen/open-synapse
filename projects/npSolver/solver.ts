@@ -13,7 +13,7 @@ interface ReasonNode {
   conclusion: string;
 }
 
-const DEFAULT_MAX_DEPTH = 3;
+const DEFAULT_MAX_DEPTH = 1;
 
 const indent = (depth: number) => "  ".repeat(depth);
 
@@ -25,7 +25,10 @@ function buildAncestorContext(node: ReasonNode): string {
     current = current.parent;
   }
   if (chain.length === 0) return "";
-  return `\n\n# 问题链\n## 原始问题\n${chain[0]}${chain.slice(1).map((c, i) => `\n\n## 第${i + 1}层探索方向\n${c}`).join("")}`;
+  return `\n\n# 问题链\n## 原始问题\n${chain[0]}${chain
+    .slice(1)
+    .map((c, i) => `\n\n## 第${i + 1}层探索方向\n${c}`)
+    .join("")}`;
 }
 
 export class NPSolver {
@@ -218,7 +221,9 @@ export class NPSolver {
           name: "select",
           description: "选择一个最优的方向作为最终结果",
           inputSchema: z.object({
-            selectedIndex: z.number().describe("选中的方向编号（从1开始，对应方向1、方向2...）"),
+            selectedIndex: z
+              .number()
+              .describe("选中的方向编号（从1开始，对应方向1、方向2...）"),
             reason: z.string().describe("选择此方向的原因"),
           }),
           onExecute: async (params: {
@@ -232,7 +237,9 @@ export class NPSolver {
             const selected = childResults[idx];
             if (!selected) {
               reject(
-                new Error(`Invalid selection index: ${params.selectedIndex} (resolved to ${idx}, total: ${childResults.length})`),
+                new Error(
+                  `Invalid selection index: ${params.selectedIndex} (resolved to ${idx}, total: ${childResults.length})`,
+                ),
               );
               return;
             }
