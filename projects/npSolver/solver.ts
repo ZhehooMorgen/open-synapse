@@ -1,4 +1,6 @@
-import type { IAiSdk } from "./AiSdk";
+import z from "zod";
+import type { IAiSdk, NextAction } from "./AiSdk";
+import prompts from "./prompts";
 
 interface FinalAnswer {
   answer: string;
@@ -76,7 +78,29 @@ export class NPSolver {
   }
 
   async heuristic(context: string, question: string): Promise<string[]> {
-    throw new Error("Not implemented");
+    const prompt = `${prompts.theory}\n${prompts.heuristics}\n\n# 原始问题\n${question}\n\n# 当前上下文\n${context}`;
+
+    return await new Promise<string[]>((resolve, reject) => {
+      const actions: NextAction<any>[] = [
+        {
+          name: "output_heuristics",
+          description: "输出本轮启发式信息列表",
+          inputSchema: z.object({
+            heuristics: z
+              .array(z.string())
+              .describe("本轮启发式信息，可为空数组"),
+          }),
+          onExecute: async (params: { heuristics: string[] }) => {
+            const normalized = params.heuristics
+              .map((item) => item.trim())
+              .filter(Boolean);
+            resolve(normalized);
+          },
+        },
+      ];
+
+      this.sdk.inferFlow(prompt, actions).catch(reject);
+    });
   }
 
   async answer(
@@ -84,7 +108,29 @@ export class NPSolver {
     question: string,
     heuristics: string[],
   ): Promise<string> {
-    throw new Error("Not implemented");
+    const heuristicsText =
+      heuristics.length > 0
+        ? heuristics.map((item, index) => `${index + 1}. ${item}`).join("\n")
+        : "(空)";
+
+    const prompt = `${prompts.theory}\n${prompts.answer}\n\n# 原始问题\n${question}\n\n# 当前上下文\n${context}\n\n# 启发式信息\n${heuristicsText}`;
+
+    return await new Promise<string>((resolve, reject) => {
+      const actions: NextAction<any>[] = [
+        {
+          name: "output_answer",
+          description: "输出本轮回答",
+          inputSchema: z.object({
+            answer: z.string().describe("本轮回答内容"),
+          }),
+          onExecute: async (params: { answer: string }) => {
+            resolve(params.answer.trim());
+          },
+        },
+      ];
+
+      this.sdk.inferFlow(prompt, actions).catch(reject);
+    });
   }
 
   async evaluate(
@@ -96,7 +142,44 @@ export class NPSolver {
     result: NodeStatus;
     reason: string;
   }> {
-    throw new Error("Not implemented");
+    const heuristicsText =
+      heuristics.length > 0
+        ? heuristics.map((item, index) => `${index + 1}. ${item}`).join("\n")
+        : "(空)";
+
+    const prompt = `${prompts.theory}\n${prompts.evaluation}\n\n# 原始问题\n${question}\n\n# 当前上下文\n${context}\n\n# 启发式信息\n${heuristicsText}\n\n# 本轮回答\n${conclusion}`;
+
+    return await new Promise<{ result: NodeStatus; reason: string }>(
+      (resolve, reject) => {
+        const actions: NextAction<any>[] = [
+          {
+            name: "output_evaluation",
+            description: "输出评估结果",
+            inputSchema: z.object({
+              result: z
+                .enum([
+                  NodeStatus.Accepted,
+                  NodeStatus.Rejected,
+                  NodeStatus.Finalized,
+                ])
+                .describe("评估状态：accepted/rejected/finalized"),
+              reason: z.string().describe("评估理由"),
+            }),
+            onExecute: async (params: {
+              result: NodeStatus;
+              reason: string;
+            }) => {
+              resolve({
+                result: params.result,
+                reason: params.reason.trim(),
+              });
+            },
+          },
+        ];
+
+        this.sdk.inferFlow(prompt, actions).catch(reject);
+      },
+    );
   }
 
   async summarizeNode(
@@ -106,11 +189,77 @@ export class NPSolver {
     conclusion: string,
     evaluation: { result: NodeStatus; reason: string },
   ): Promise<ReasonNode> {
-    throw new Error("Not implemented");
+    if (evaluation.result === NodeStatus.Finalized) {
+      return {
+        context: "已得到可直接交付的最终结论",
+        conclusion,
+        result: NodeStatus.Finalized,
+      };
+    }
+
+    const heuristicsText =
+      heuristics.length > 0
+        ? heuristics.map((item, index) => `${index + 1}. ${item}`).join("\n")
+        : "(空)";
+
+    const prompt = `${prompts.theory}\n${prompts.summary}\n\n# 原始问题\n${question}\n\n# 当前上下文\n${context}\n\n# 启发式信息\n${heuristicsText}\n\n# 本轮回答\n${conclusion}\n\n# 评估结果\n状态: ${evaluation.result}\n原因: ${evaluation.reason}`;
+
+    return await new Promise<ReasonNode>((resolve, reject) => {
+      const actions: NextAction<any>[] = [
+        {
+          name: "output_summary",
+          description: "输出本轮总结",
+          inputSchema: z.object({
+            summary: z.string().describe("用于下一轮推理的精炼总结"),
+          }),
+          onExecute: async (params: { summary: string }) => {
+            resolve({
+              context: params.summary.trim(),
+              conclusion,
+              result: evaluation.result,
+            });
+          },
+        },
+      ];
+
+      this.sdk.inferFlow(prompt, actions).catch(reject);
+    });
   }
 
   async generateFinalAnswer(nodes: ReasonNode[]): Promise<string> {
-    throw new Error("Not implemented");
+    if (nodes.length === 0) {
+      return "未生成有效推理步骤，无法给出答案。";
+    }
+
+    const lastNode = nodes[nodes.length - 1]!;
+    if (lastNode.result === NodeStatus.Finalized) {
+      return lastNode.conclusion;
+    }
+
+    const steps = nodes
+      .map((node, index) => {
+        return `\n步骤 ${index + 1}\n状态: ${node.result}\n上下文: ${node.context}\n结论: ${node.conclusion}`;
+      })
+      .join("\n\n");
+
+    const prompt = `${prompts.theory}\n${prompts.finalAnswer}\n\n# 推理步骤\n${steps}`;
+
+    return await new Promise<string>((resolve, reject) => {
+      const actions: NextAction<any>[] = [
+        {
+          name: "output_final_answer",
+          description: "输出最终答案",
+          inputSchema: z.object({
+            answer: z.string().describe("可直接给用户的最终答案"),
+          }),
+          onExecute: async (params: { answer: string }) => {
+            resolve(params.answer.trim());
+          },
+        },
+      ];
+
+      this.sdk.inferFlow(prompt, actions).catch(reject);
+    });
   }
 }
 
