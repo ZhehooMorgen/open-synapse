@@ -25,6 +25,7 @@ export class NPSolver {
   constructor(
     private sdk: IAiSdk,
     private maxIteration: number = DEFAULT_MAX_ITERATION,
+    private logger = console,
   ) {}
 
   async solve(question: string): Promise<FinalAnswer> {
@@ -32,11 +33,11 @@ export class NPSolver {
     const nodes: ReasonNode[] = [];
 
     while (iteration < this.maxIteration) {
-      console.log(`----- Iteration ${iteration + 1}/${this.maxIteration}`);
-      const node = await this.reason(question, nodes);
+      this.logger.log(`----- Iteration ${iteration + 1}/${this.maxIteration}`);
+      const node = await this.reason(question, nodes, iteration);
       nodes.push(node);
 
-      console.log("\n\n");
+      this.logger.log("\n\n");
 
       if (node.result === NodeStatus.Finalized) {
         break;
@@ -46,7 +47,7 @@ export class NPSolver {
     }
 
     return {
-      answer: await this.generateFinalAnswer(nodes),
+      answer: await this.generateFinalAnswer(question, nodes),
       steps: nodes.map(
         (n) =>
           `Context:\n${n.context}\nConclusion:\n${n.conclusion}\nResult: ${n.result}`,
@@ -57,16 +58,23 @@ export class NPSolver {
   async reason(
     question: string,
     previousNodes: ReasonNode[],
+    iteration: number,
   ): Promise<ReasonNode> {
     const context = buildReasonContext(question, previousNodes);
 
-    const heuristics = await this.heuristic(context, question);
-    const conclusion = await this.answer(context, question, heuristics);
+    const heuristics = await this.heuristic(context, question, iteration);
+    const conclusion = await this.answer(
+      context,
+      question,
+      heuristics,
+      iteration,
+    );
     const result = await this.evaluate(
       context,
       question,
       heuristics,
       conclusion,
+      iteration,
     );
     return await this.summarizeNode(
       context,
@@ -74,11 +82,26 @@ export class NPSolver {
       heuristics,
       conclusion,
       result,
+      iteration,
     );
   }
 
-  async heuristic(context: string, question: string): Promise<string[]> {
-    const prompt = `${prompts.theory}\n${prompts.heuristics}\n\n# 原始问题\n${question}\n\n# 当前上下文\n${context}`;
+  async heuristic(
+    context: string,
+    question: string,
+    iteration: number,
+  ): Promise<string[]> {
+    let prompt = buildStructuredPrompt({
+      theory: prompts.theory,
+      context,
+      rolePrompt: prompts.heuristics,
+      question,
+      instruction: "生成启发式信息，并调用工具输出 heuristics 列表。",
+    });
+
+    if (iteration === 0) {
+      prompt += prompts.firstIterationHeuristics;
+    }
 
     return await new Promise<string[]>((resolve, reject) => {
       const actions: NextAction<any>[] = [
@@ -91,10 +114,11 @@ export class NPSolver {
               .describe("本轮启发式信息，可为空数组"),
           }),
           onExecute: async (params: { heuristics: string[] }) => {
-            const normalized = params.heuristics
-              .map((item) => item.trim())
-              .filter(Boolean);
-            resolve(normalized);
+            // this.logger.log(
+            //   `Heuristics generated in iteration ${iteration + 1}:`,
+            // );
+            // this.logger.log(params.heuristics);
+            resolve(params.heuristics);
           },
         },
       ];
@@ -107,13 +131,20 @@ export class NPSolver {
     context: string,
     question: string,
     heuristics: string[],
+    iteration: number,
   ): Promise<string> {
     const heuristicsText =
       heuristics.length > 0
         ? heuristics.map((item, index) => `${index + 1}. ${item}`).join("\n")
         : "(空)";
 
-    const prompt = `${prompts.theory}\n${prompts.answer}\n\n# 原始问题\n${question}\n\n# 当前上下文\n${context}\n\n# 启发式信息\n${heuristicsText}`;
+    const prompt = buildStructuredPrompt({
+      theory: prompts.theory,
+      context: `${context}\n\n# 启发式信息\n${heuristicsText}`,
+      rolePrompt: prompts.answer,
+      question,
+      instruction: "生成本轮回答，并调用工具输出 answer。",
+    });
 
     return await new Promise<string>((resolve, reject) => {
       const actions: NextAction<any>[] = [
@@ -124,6 +155,8 @@ export class NPSolver {
             answer: z.string().describe("本轮回答内容"),
           }),
           onExecute: async (params: { answer: string }) => {
+            // this.logger.log(`Answer generated in iteration ${iteration + 1}:`);
+            // this.logger.log(params.answer);
             resolve(params.answer.trim());
           },
         },
@@ -138,6 +171,7 @@ export class NPSolver {
     question: string,
     heuristics: string[],
     conclusion: string,
+    iteration: number,
   ): Promise<{
     result: NodeStatus;
     reason: string;
@@ -147,7 +181,13 @@ export class NPSolver {
         ? heuristics.map((item, index) => `${index + 1}. ${item}`).join("\n")
         : "(空)";
 
-    const prompt = `${prompts.theory}\n${prompts.evaluation}\n\n# 原始问题\n${question}\n\n# 当前上下文\n${context}\n\n# 启发式信息\n${heuristicsText}\n\n# 本轮回答\n${conclusion}`;
+    const prompt = buildStructuredPrompt({
+      theory: prompts.theory,
+      context: `${context}\n\n# 启发式信息\n${heuristicsText}\n\n# 本轮回答\n${conclusion}`,
+      rolePrompt: prompts.evaluation,
+      question,
+      instruction: "评估本轮回答，并调用工具输出 result 与 reason。",
+    });
 
     return await new Promise<{ result: NodeStatus; reason: string }>(
       (resolve, reject) => {
@@ -169,6 +209,11 @@ export class NPSolver {
               result: NodeStatus;
               reason: string;
             }) => {
+              // this.logger.log(
+              //   `Evaluation generated in iteration ${iteration + 1}:`,
+              // );
+              // this.logger.log(`Result: ${params.result}`);
+              // this.logger.log(`Reason: ${params.reason}`);
               resolve({
                 result: params.result,
                 reason: params.reason.trim(),
@@ -188,6 +233,7 @@ export class NPSolver {
     heuristics: string[],
     conclusion: string,
     evaluation: { result: NodeStatus; reason: string },
+    iteration: number,
   ): Promise<ReasonNode> {
     if (evaluation.result === NodeStatus.Finalized) {
       return {
@@ -202,7 +248,13 @@ export class NPSolver {
         ? heuristics.map((item, index) => `${index + 1}. ${item}`).join("\n")
         : "(空)";
 
-    const prompt = `${prompts.theory}\n${prompts.summary}\n\n# 原始问题\n${question}\n\n# 当前上下文\n${context}\n\n# 启发式信息\n${heuristicsText}\n\n# 本轮回答\n${conclusion}\n\n# 评估结果\n状态: ${evaluation.result}\n原因: ${evaluation.reason}`;
+    const prompt = buildStructuredPrompt({
+      theory: prompts.theory,
+      context: `${context}\n\n# 启发式信息\n${heuristicsText}\n\n# 本轮回答\n${conclusion}\n\n# 评估结果\n状态: ${evaluation.result}\n原因: ${evaluation.reason}`,
+      rolePrompt: prompts.summary,
+      question,
+      instruction: "总结当前步骤，并调用工具输出 summary。",
+    });
 
     return await new Promise<ReasonNode>((resolve, reject) => {
       const actions: NextAction<any>[] = [
@@ -213,6 +265,8 @@ export class NPSolver {
             summary: z.string().describe("用于下一轮推理的精炼总结"),
           }),
           onExecute: async (params: { summary: string }) => {
+            // this.logger.log(`Summary generated in iteration ${iteration + 1}:`);
+            // this.logger.log(params.summary);
             resolve({
               context: params.summary.trim(),
               conclusion,
@@ -226,15 +280,15 @@ export class NPSolver {
     });
   }
 
-  async generateFinalAnswer(nodes: ReasonNode[]): Promise<string> {
+  async generateFinalAnswer(
+    question: string,
+    nodes: ReasonNode[],
+  ): Promise<string> {
     if (nodes.length === 0) {
       return "未生成有效推理步骤，无法给出答案。";
     }
 
     const lastNode = nodes[nodes.length - 1]!;
-    if (lastNode.result === NodeStatus.Finalized) {
-      return lastNode.conclusion;
-    }
 
     const steps = nodes
       .map((node, index) => {
@@ -242,7 +296,15 @@ export class NPSolver {
       })
       .join("\n\n");
 
-    const prompt = `${prompts.theory}\n${prompts.finalAnswer}\n\n# 推理步骤\n${steps}`;
+    const prompt = buildStructuredPrompt({
+      theory: prompts.theory,
+      context: `# 推理步骤\n${steps}`,
+      rolePrompt: prompts.finalAnswer,
+      question,
+      instruction: "生成最终答案，并调用工具输出 answer。",
+    });
+
+    console.log(`[NPSolver] Generating final answer with prompt:\n${prompt}`);
 
     return await new Promise<string>((resolve, reject) => {
       const actions: NextAction<any>[] = [
@@ -289,4 +351,28 @@ ${previousSteps}
     `;
 
   return context;
+}
+
+function buildStructuredPrompt(params: {
+  theory: string;
+  context: string;
+  rolePrompt: string;
+  question: string;
+  instruction: string;
+}): string {
+  return `# theory
+${params.theory}
+
+# context
+${params.context}
+
+# role prompt
+${params.rolePrompt}
+
+现在请你对 question 进行处理。
+# question
+${params.question}
+
+# 要求
+${params.instruction}`;
 }

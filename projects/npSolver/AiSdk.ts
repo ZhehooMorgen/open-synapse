@@ -68,9 +68,7 @@ export class OpenRouterSdk implements IAiSdk {
 
       const matchingAction = nextActions.find((a) => a.name === toolCall.name);
       if (!matchingAction) {
-        throw new Error(
-          `No matching action found for tool call: ${toolCall.name}`,
-        );
+        continue;
       }
 
       if (toolCall.arguments === undefined || toolCall.arguments === null) {
